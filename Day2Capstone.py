@@ -33,7 +33,7 @@ import pickle
 
 action_menu = {1:'Buy',2:'Sell',3:'View Balance',4:'Exit'}
 current_transact_count = 0
-max_transact_count = 10
+max_transact_count = 2
 transaction_list=[]
 
 #initialize booleans for trade sides
@@ -91,7 +91,10 @@ class TradeAccount:
             print('Average balance: $' + str(sum(self.__balance_history) /
                                         len(self.__balance_history)))
         return self.__current_balance
-     
+
+   def get_trade_count(self):
+       return len(self.__balance_history)
+    
    def trade(self, side, price, quantity):
        trade_value = price*quantity
        if side: #BUY
@@ -122,13 +125,6 @@ class Block:
 
   def get_hash(self):
     return self.__hash
-
-  def add_transaction(self, side,price,quantity): #Add a dictionary
-      col_names = ['Side','Price','Quantity']
-      df = pd.DataFrame(columns=col_names)
-      data = pd.DataFrame([[side, price, quantity]],columns=col_names)
-      df = df.append(data, ignore_index=True)
-      self.__transactions = df.items()
       
   def get_transactions(self):
       return self.__transactions
@@ -146,26 +142,13 @@ class Blockchain:
 
 chain = Blockchain()
 #chain.add_transaction(transaction)
-columns = ["high","low","open","close"]
-transactions = ([0,0,0],['Side','Price','Quantity'])
-
 
 genesis = Block(0,0,transactions)
 print(genesis.__dict__)
 
 
-block1 = Block(1,genesis.get_hash(),transactions)
-print(block1.__dict__)
-
-
-
-
 #Instantiate the class with a starting balance of 100 and no trades
 ta1 = TradeAccount('JJ',500000, dt.datetime.now()) 
-
-
-
-   
 
 #Class to track the price history of a single stock
 class Stock:
@@ -205,9 +188,7 @@ while menu_option >=0 and menu_option < 4:
             symbol = input('Type a ticker symbol')
             price = get_price(symbol)
             print('The price of', symbol, 'is',price)
-            block1 = Block(1,genesis.get_hash(),transactions)
-            #print(block1.__dict__)
-                 
+          
             if menu_option == 1:
                 quantity = int(input('Enter quantity to buy: '))
                 print('Trade value: $',price*quantity)  
@@ -217,19 +198,36 @@ while menu_option >=0 and menu_option < 4:
                 quantity = int(input('Enter quantity to sell: '))
                 print('Trade value: $',price*quantity) 
                 balance = ta1.trade(SELL, price, quantity)
+                
             #build a string concatenating the parameters
             json_data = '{"symbol":"'+symbol+'","price":"'+str(price)+'","quantity":"'+str(quantity)+'"}'
             print(json_data)
             transactions = json.loads(json_data)
             print(transactions['symbol'],transactions['price'])
-            transaction_list.append(transactions)
-            for n in range(0,len(transaction_list)):
-                print(transaction_list[n])
-            #once we have 10 trades write them to a block
-            if len(transaction_list)==10:
-                block1 = Block(1,genesis.get_hash(),transaction_list)
-                print(block1.__dict__)
-                
+            
+            #build the list of trades until you get to max. print running list to demonstrate it is working
+            if len(transaction_list)<max_transact_count:
+                transaction_list.append(transactions)
+                for n in range(0,len(transaction_list)):
+                    print(transaction_list[n])
+            
+            #once we have max number trades allowed per block
+            #write them to a block, pickle the data, clear the list and start a new block
+            if len(transaction_list)==max_transact_count:
+                with open('data.pickle', 'wb') as f:
+                    # Pickle the 'data' dictionary using the highest protocol available.
+                    pickle.dump(transaction_list, f, pickle.HIGHEST_PROTOCOL)
+                    trade_count = ta1.get_trade_count() #how many trades overall
+                    if trade_count==max_transact_count*1: #first n trades go in first block
+                        block1 = Block(1,genesis.get_hash(),transaction_list)
+                        print(block1.__dict__)
+                    elif trade_count==max_transact_count*2:#next n trades go into a new block
+                        block2 = Block(2,block1.get_hash(),transaction_list)
+                        print(block2.__dict__)
+                    elif trade_count==max_transact_count*3:#next n trades go into a new block
+                        block3 = Block(3,block2.get_hash(),transaction_list)
+                        print(block3.__dict__)
+                transaction_list.clear()
      
         elif menu_option ==3: 
             ta1.get_current_balance()
