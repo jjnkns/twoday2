@@ -29,11 +29,15 @@ import hashlib
 import pandas as pd
 import pickle
 
-
+with open('data.pickle', 'rb') as f:
+    # The protocol version used is detected automatically, so we do not
+    # have to specify it.
+    data = pickle.load(f)
+    print('Here is proof that we have picked data from before:',data)
 
 action_menu = {1:'Buy',2:'Sell',3:'View Balance',4:'Exit'}
 current_transact_count = 0
-max_transact_count = 2
+max_transact_count = 5
 transaction_list=[]
 
 #initialize booleans for trade sides
@@ -61,12 +65,7 @@ class Trade:
         self.__symbol = symbol
     def get_trade_value(self,price, quantity):
         return self.__price*self.__quantity
-    def add_trade_history(self, quantity, price, symbol, timestamp):
-        col_names = ['symbol','price', 'quantity', 'PxQ', 'timestamp']
-        data = [symbol, price, quantity, price*quantity,dt.datetime.now()]
-        df = pd.DataFrame(data,columns=col_names)
-        Total = df['PxQ'].sum()
-        return Total
+
     
 
 class TradeAccount:
@@ -143,23 +142,44 @@ class Blockchain:
 chain = Blockchain()
 #chain.add_transaction(transaction)
 
-genesis = Block(0,0,transactions)
+genesis = Block(0,0,transaction_list)
 print(genesis.__dict__)
 
 
-#Instantiate the class with a starting balance of 100 and no trades
+#Instantiate the class with a starting balance of 500000 and no trades
 ta1 = TradeAccount('JJ',500000, dt.datetime.now()) 
 
 #Class to track the price history of a single stock
+#for this exercise let's pretend that we are getting real time price instead of closing price
 class Stock:
-    def __init__(self, symbol, price, quantity, datetime):
-        self.__symbol = symbol
-        self.__price = price
-        self.__quantity = quantity
-        self.__datetime = datetime
-        self.__price_history = {}
-    def get_VWAP(self, symbol, stocks):
-        pass
+    def __init__(self, price_history):
+        self.__price_history = []
+    def add_price_history(self,price_history):
+        self.__price_history.append(price_history)
+    def get_vwap(self,symbol):
+        #print('HISTORY:',self.__price_history)
+        running_q = 0 #initialize running value for quantity
+        running_qp =0 #initialize running value for quantity * price
+        
+        for h in range(0,len(self.__price_history)):
+           json_data=self.__price_history[h]
+           df=pd.read_json(json_data, typ='series')
+           if df['symbol']==symbol:
+               q = int(df['quantity'])
+               p = float(df['price'])
+               qp = q*p
+           
+               running_q +=q
+               running_qp +=qp
+               vwap = running_qp/running_q
+               return vwap
+       
+        print(df['symbol'],['price'],['time'],vwap)
+
+
+price_history ={}
+#instantiate to track stock prices
+stock1 = Stock(price_history)
 
         
 def get_price(symbol):
@@ -176,8 +196,6 @@ def display_menu():
         
 menu_option = 0    
 
-t1 = Trade('x',0,0,dt.datetime.now())
-
 while menu_option >=0 and menu_option < 4:
         if menu_option == 0:
             display_menu()
@@ -188,22 +206,27 @@ while menu_option >=0 and menu_option < 4:
             symbol = input('Type a ticker symbol')
             price = get_price(symbol)
             print('The price of', symbol, 'is',price)
-          
+            print('VWAP is: $' + stock1.get_vwap(symbol))
+          #note that when running this after hours we get the same price and vwap over and over
+          #in real life intraday vwap will be dynamic
+          #to test this we could use a random numbers or stock price history instead
             if menu_option == 1:
                 quantity = int(input('Enter quantity to buy: '))
+                side = 'BUY'
                 print('Trade value: $',price*quantity)  
                 balance = ta1.trade(BUY, price, quantity)
                 
             else:
                 quantity = int(input('Enter quantity to sell: '))
+                side = 'SELL'
                 print('Trade value: $',price*quantity) 
                 balance = ta1.trade(SELL, price, quantity)
                 
             #build a string concatenating the parameters
-            json_data = '{"symbol":"'+symbol+'","price":"'+str(price)+'","quantity":"'+str(quantity)+'"}'
-            print(json_data)
+            json_data = '{"time":"'+str(dt.datetime.now()) +'",'+'"symbol":"'+symbol+'","price":'+str(price)+ ',"quantity":'+str(quantity)+',"side":"'+side+'"}'
             transactions = json.loads(json_data)
-            print(transactions['symbol'],transactions['price'])
+            stock1.add_price_history(json_data)
+            
             
             #build the list of trades until you get to max. print running list to demonstrate it is working
             if len(transaction_list)<max_transact_count:
