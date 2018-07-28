@@ -2,7 +2,9 @@
 """
 Created on Sun Jul 22 12:44:34 2018
 
-@author: jjnkn
+@author: jjnkn 
+Jennifer Jenkins
+For Chainhaus two day Python Blockchain Data Science Intro class
 """
 
 
@@ -17,10 +19,6 @@ Created on Sun Jul 22 12:44:34 2018
 #Read up on Python pickling and find a mechanism to store the blockchain to disk
 #and retrieve it even after the app is stopped and restarts. Feel free to use JSON format.'''
 
-#from http://empirica.io/blog/vwap-algorithm/
-#typical price = close + high + low divided by 3
-#or open + close + high + low divided by 4
-
 import requests
 import json
 import datetime as dt
@@ -33,7 +31,7 @@ with open('data.pickle', 'rb') as f:
     # The protocol version used is detected automatically, so we do not
     # have to specify it.
     data = pickle.load(f)
-    print('Here is proof that we have picked data from before:',data)
+    print('Here is proof that we have pickled data from before:',data)
 
 action_menu = {1:'Buy',2:'Sell',3:'View Balance',4:'Exit'}
 current_transact_count = 0
@@ -44,30 +42,6 @@ transaction_list=[]
 BUY = True
 SELL = False
 
-
-class Trade:
-    def __init__(self, quantity, price, symbol, timestamp):
-        self.__quantity = quantity
-        self.__price = price
-        self.__symbol = symbol
-    def get_quantity(self):
-        return self._quantity
-    def get_price(self):
-        return self._price
-    
-    def get_symbol(self):
-        return self.__symbol
-    def set_quantity(self,quantity):
-        self.__quantity = quantity
-    def set_price(self,price):
-        self.__price = price
-    def set_symbol(self,symbol):
-        self.__symbol = symbol
-    def get_trade_value(self,price, quantity):
-        return self.__price*self.__quantity
-
-    
-
 class TradeAccount:
    def __init__(self, name, initial_balance, datetime):
        self.__name = name
@@ -75,7 +49,6 @@ class TradeAccount:
        self.__current_balance = initial_balance
        self.__datetime = dt.datetime.now()
        self.__balance_history = []
-       self.__price_history = []
    def get_current_balance(self):
         print('Your current balance is: ', self.__current_balance)
         
@@ -129,19 +102,8 @@ class Block:
       return self.__transactions
       print(self.__transactions.count)
       
-        
-class Blockchain:
 
- #def add_transaction(transactions):
- #   block = Block()
-  
-  def __get_seq_id():
-    return 
-
-
-chain = Blockchain()
-#chain.add_transaction(transaction)
-
+#Start a new block from scratch
 genesis = Block(0,0,transaction_list)
 print(genesis.__dict__)
 
@@ -174,7 +136,6 @@ class Stock:
                vwap = running_qp/running_q
                return vwap
        
-        print(df['symbol'],['price'],['time'],vwap)
 
 
 price_history ={}
@@ -206,7 +167,7 @@ while menu_option >=0 and menu_option < 4:
             symbol = input('Type a ticker symbol')
             price = get_price(symbol)
             print('The price of', symbol, 'is',price)
-            print('VWAP is: $' + stock1.get_vwap(symbol))
+           
           #note that when running this after hours we get the same price and vwap over and over
           #in real life intraday vwap will be dynamic
           #to test this we could use a random numbers or stock price history instead
@@ -224,9 +185,9 @@ while menu_option >=0 and menu_option < 4:
                 
             #build a string concatenating the parameters
             json_data = '{"time":"'+str(dt.datetime.now()) +'",'+'"symbol":"'+symbol+'","price":'+str(price)+ ',"quantity":'+str(quantity)+',"side":"'+side+'"}'
-            transactions = json.loads(json_data)
-            stock1.add_price_history(json_data)
-            
+            transactions = json.loads(json_data) 
+            stock1.add_price_history(json_data) #add to stocks so we can get vwap
+            print('VWAP for', symbol, ' is now: $', stock1.get_vwap(symbol))
             
             #build the list of trades until you get to max. print running list to demonstrate it is working
             if len(transaction_list)<max_transact_count:
